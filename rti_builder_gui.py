@@ -4,7 +4,7 @@ import os
 
 from PyQt5.QtCore import (QDir, QIODevice, QFile, QFileInfo, Qt, QTextStream,
         QUrl)
-from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtGui import QDesktopServices, QImage, QImageReader, QPixmap
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
         QDialog, QFileDialog, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
         QProgressDialog, QPushButton, QSizePolicy, QTableWidget,
@@ -22,6 +22,8 @@ class Window(QDialog):
         self.inputPath = QLabel(QDir.currentPath())
         self.inputStats = QLabel("")
         self.inputFiles = []
+        #self.exampleImage = QPixMap()
+        self.exampleImageDisplay = QLabel()
 
         outputButton = self.createButton("&Select output folder", self.browseForOutput)
         outputLabel = QLabel("Output path:")
@@ -55,6 +57,7 @@ class Window(QDialog):
         mainLayout.addWidget(inputLabel, 0, 1)
         mainLayout.addWidget(self.inputPath, 0, 2)
         mainLayout.addWidget(self.inputStats, 1, 0)
+        mainLayout.addWidget(self.exampleImageDisplay, 1, 1)
 
         mainLayout.addWidget(outputButton, 2, 0)
         mainLayout.addWidget(outputLabel, 2, 1)
@@ -74,6 +77,11 @@ class Window(QDialog):
 
         self.setWindowTitle("Find Files")
         self.resize(700, 300)
+
+    def createButton(self, text, member):
+        button = QPushButton(text)
+        button.clicked.connect(member)
+        return button
 
     def browseForInput(self):
         directory = QFileDialog.getExistingDirectory(self, "Select input folder",
@@ -102,6 +110,14 @@ class Window(QDialog):
         stats = []
         for extension in countsPerExtension:
           stats.append(extension + ": " + str(countsPerExtension[extension]) + " files")
+
+        #load and display the first image
+        self.exampleImage = QImage()
+        if self.exampleImage.load(self.inputFiles[0]):
+          print "load success"
+          tmpPixmap = QPixmap(1)
+          tmpPixmap.convertFromImage(self.exampleImage.scaledToWidth(300))
+          self.exampleImageDisplay.setPixmap(tmpPixmap)
 
         self.inputStats.setText(",".join(stats))
         self.inputPath.setText(directory)
@@ -132,7 +148,7 @@ class Window(QDialog):
 
     #FIXME the following is leftovers from example code, can be useful,
     #but currently not needed
-
+'''
     @staticmethod
     def updateComboBox(comboBox):
         if comboBox.findText(comboBox.currentText()) == -1:
@@ -191,10 +207,7 @@ class Window(QDialog):
 
         self.filesFoundLabel.setText("%d file(s) found (Double click on a file to open it)" % len(files))
 
-    def createButton(self, text, member):
-        button = QPushButton(text)
-        button.clicked.connect(member)
-        return button
+
 
     def createComboBox(self, text=""):
         comboBox = QComboBox()
@@ -223,7 +236,7 @@ class Window(QDialog):
         QDesktopServices.openUrl(QUrl(self.currentDir.absoluteFilePath(item.text())))
 
     #FIXME
-
+'''
 
 if __name__ == '__main__':
 
