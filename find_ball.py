@@ -72,7 +72,7 @@ if __name__ == '__main__':
         print 'usage: %s input-image left top width height' % sys.argv[0]
         sys.exit(1)
 
-    filename = VImage.VImage(sys.argv[1])
+    filename = sys.argv[1]
     left = int(sys.argv[2])
     top = int(sys.argv[3])
     width = int(sys.argv[4])
