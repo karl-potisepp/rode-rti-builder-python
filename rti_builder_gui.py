@@ -1,47 +1,5 @@
 #!/usr/bin/env python
 
-
-#############################################################################
-##
-## Copyright (C) 2013 Riverbank Computing Limited.
-## Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-## All rights reserved.
-##
-## This file is part of the examples of PyQt.
-##
-## $QT_BEGIN_LICENSE:BSD$
-## You may use this file under the terms of the BSD license as follows:
-##
-## "Redistribution and use in source and binary forms, with or without
-## modification, are permitted provided that the following conditions are
-## met:
-##   * Redistributions of source code must retain the above copyright
-##     notice, this list of conditions and the following disclaimer.
-##   * Redistributions in binary form must reproduce the above copyright
-##     notice, this list of conditions and the following disclaimer in
-##     the documentation and/or other materials provided with the
-##     distribution.
-##   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-##     the names of its contributors may be used to endorse or promote
-##     products derived from this software without specific prior written
-##     permission.
-##
-## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-## "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-## LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-## A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-## OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-## SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-## LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-## DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-## THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-## $QT_END_LICENSE$
-##
-#############################################################################
-
-
 import os
 
 from PyQt5.QtCore import (QDir, QIODevice, QFile, QFileInfo, Qt, QTextStream,
@@ -62,6 +20,7 @@ class Window(QDialog):
         inputButton = self.createButton("&Select input folder", self.browseForInput)
         inputLabel = QLabel("Input path: ")
         self.inputPath = QLabel(QDir.currentPath())
+        self.inputStats = QLabel("")
 
         outputButton = self.createButton("&Select output folder", self.browseForOutput)
         outputLabel = QLabel("Output path:")
@@ -94,17 +53,18 @@ class Window(QDialog):
         mainLayout.addWidget(inputButton, 0, 0)
         mainLayout.addWidget(inputLabel, 0, 1)
         mainLayout.addWidget(self.inputPath, 0, 2)
+        mainLayout.addWidget(self.inputStats, 1, 0)
 
-        mainLayout.addWidget(outputButton, 1, 0)
-        mainLayout.addWidget(outputLabel, 1, 1)
-        mainLayout.addWidget(self.outputPath, 1, 2)
+        mainLayout.addWidget(outputButton, 2, 0)
+        mainLayout.addWidget(outputLabel, 2, 1)
+        mainLayout.addWidget(self.outputPath, 2, 2)
 
         buttonsLayout = QHBoxLayout()
         buttonsLayout.addStretch()
         buttonsLayout.addWidget(startButton)
         buttonsLayout.addWidget(quitButton)
 
-        mainLayout.addLayout(buttonsLayout, 2, 0)
+        mainLayout.addLayout(buttonsLayout, 3, 0)
 
         #mainLayout.addWidget(self.filesTable, 3, 0, 1, 3)
         #mainLayout.addWidget(self.filesFoundLabel, 4, 0)
@@ -122,6 +82,9 @@ class Window(QDialog):
         countsPerExtension = {}
         for root, dirs, files in os.walk(directory):
           for f in files:
+
+            #TODO more per-file auditing here?
+
             if f.lower().endswith("jpg") or f.lower().endswith("jpeg"):
               if "JPG" not in countsPerExtension:
                 countsPerExtension["JPG"] = 0
@@ -130,7 +93,14 @@ class Window(QDialog):
               if "TIFF" not in countsPerExtension:
                 countsPerExtension["TIFF"] = 0
               countsPerExtension["TIFF"] += 1
+          #do not descend recursively
+          break
 
+        stats = []
+        for extension in countsPerExtension:
+          stats.append(extension + ": " + str(countsPerExtension[extension]) + " files")
+
+        self.inputStats.setText(",".join(stats))
         self.inputPath.setText(directory)
 
     def browseForOutput(self):
