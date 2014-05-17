@@ -21,6 +21,7 @@ class Window(QDialog):
         inputLabel = QLabel("Input path: ")
         self.inputPath = QLabel(QDir.currentPath())
         self.inputStats = QLabel("")
+        self.inputFiles = []
 
         outputButton = self.createButton("&Select output folder", self.browseForOutput)
         outputLabel = QLabel("Output path:")
@@ -89,10 +90,12 @@ class Window(QDialog):
               if "JPG" not in countsPerExtension:
                 countsPerExtension["JPG"] = 0
               countsPerExtension["JPG"] += 1
+              self.inputFiles.append(os.path.join(root, f))
             elif f.lower().endswith("tiff"):
               if "TIFF" not in countsPerExtension:
                 countsPerExtension["TIFF"] = 0
               countsPerExtension["TIFF"] += 1
+              self.inputFiles.append(os.path.join(root, f))
           #do not descend recursively
           break
 
@@ -107,12 +110,6 @@ class Window(QDialog):
         directory = QFileDialog.getExistingDirectory(self, "Select output folder",
                 QDir.currentPath())
 
-        #if directory:
-        #    if self.directoryComboBox.findText(directory) == -1:
-        #        self.directoryComboBox.addItem(directory)
-        #
-        #    self.directoryComboBox.setCurrentIndex(self.directoryComboBox.findText(directory))
-
         self.outputPath.setText(directory)
 
     def process(self):
@@ -120,10 +117,21 @@ class Window(QDialog):
         QMessageBox.information(self, "Processing",
           "Processing files in " + self.inputPath.text())
 
-        #TODO
+        print "executing find-ball3.ws on ", '''
+        nip2 -bp find-ball3.ws
+          --set Workspaces.tab2.G1='Image_file "gertrud_closeup-avg.jpg"'
+          --set Workspaces.tab2.G17=2200
+          --set Workspaces.tab2.G18=1600
+          --set Workspaces.tab2.G19=500
+          --set Workspaces.tab2.G20=500
+          --set main=[Workspaces.tab2.F2,Workspaces.tab2.F5]
+          '''
 
         QMessageBox.information(self, "Done",
           "Output written to" + self.outputPath.text())
+
+    #FIXME the following is leftovers from example code, can be useful,
+    #but currently not needed
 
     @staticmethod
     def updateComboBox(comboBox):
@@ -213,6 +221,8 @@ class Window(QDialog):
         "Hello \"%s\"!" % item.text())
 
         QDesktopServices.openUrl(QUrl(self.currentDir.absoluteFilePath(item.text())))
+
+    #FIXME
 
 
 if __name__ == '__main__':
