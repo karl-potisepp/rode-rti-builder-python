@@ -10,6 +10,15 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
         QProgressDialog, QPushButton, QSizePolicy, QTableWidget,
         QTableWidgetItem, QMessageBox)
 
+#TODO an extension to QWidget that can:
+# * draw a QPixmap which represents a JPG image
+# * capture mouse press events and store their locations
+# * if two mouse press locations are stored, overlay a selection box
+#   using one coordinate as top left, other as bottom right
+# * further mouse presses adjust either the top left or bottom right coordinate
+#    whichever is closest
+# * OPTIONAL: 'zoom' button to only draw the selected part so the ball can be
+#   more closely approximated (also 'reset' button to restore original setting)
 
 class Window(QDialog):
 
