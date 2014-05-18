@@ -1,7 +1,7 @@
 rode-rti-builder-python
 =======================
 
-This is a proof-of-concept Python utility to process RTI input made as during the hackathon of the Rode Imaging Event at Niguliste Church in Tallinn (May 17-18 2014).  
+This is a proof-of-concept Python utility to process RTI input made during the hackathon of the Rode Imaging Event at Niguliste Church in Tallinn (May 17-18 2014).  
 
 Requirements:
 * Python 2.7
