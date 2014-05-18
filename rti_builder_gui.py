@@ -1,24 +1,15 @@
 #!/usr/bin/env python
 
 import os
+import sys
 
-from PyQt5.QtCore import (QDir, QIODevice, QFile, QFileInfo, Qt, QTextStream,
-        QUrl)
-from PyQt5.QtGui import QDesktopServices, QImage, QImageReader, QPixmap
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
+from PyQt5.QtCore import (QDir, QIODevice, QFile, QFileInfo, Qt, QTextStream, QRect,
+        QRectF, QUrl, QPoint)
+from PyQt5.QtGui import QDesktopServices, QImage, QImageReader, QPixmap, QPainter, QColor, QPen
+from PyQt5.QtWidgets import (QWidget, QAbstractItemView, QApplication, QComboBox,
         QDialog, QFileDialog, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
-        QProgressDialog, QPushButton, QSizePolicy, QTableWidget,
-        QTableWidgetItem, QMessageBox)
-
-#TODO an extension to QWidget that can:
-# * draw a QPixmap which represents a JPG image
-# * capture mouse press events and store their locations
-# * if two mouse press locations are stored, overlay a selection box
-#   using one coordinate as top left, other as bottom right
-# * further mouse presses adjust either the top left or bottom right coordinate
-#    whichever is closest
-# * OPTIONAL: 'zoom' button to only draw the selected part so the ball can be
-#   more closely approximated (also 'reset' button to restore original setting)
+        QProgressDialog, QPushButton, QSizePolicy, QTableWidget, QGraphicsScene,
+        QGraphicsView, QTableWidgetItem, QMessageBox)
 
 class Window(QDialog):
 
@@ -31,42 +22,22 @@ class Window(QDialog):
         self.inputPath = QLabel(QDir.currentPath())
         self.inputStats = QLabel("")
         self.inputFiles = []
-        #self.exampleImage = QPixMap()
-        self.exampleImageDisplay = QLabel()
+        self.sampleImage = SampleImageWidget(self)
 
         outputButton = self.createButton("&Select output folder", self.browseForOutput)
         outputLabel = QLabel("Output path:")
         self.outputPath = QLabel(QDir.currentPath())
 
         startButton = self.createButton("&Start processing", self.process)
-        quitButton = self.createButton("&Exit", self.close)
-
-        #self.fileComboBox = self.createComboBox("*")
-        #self.textComboBox = self.createComboBox()
-        #self.directoryComboBox = self.createComboBox(QDir.currentPath())
-
-        #fileLabel = QLabel("Named:")
-        #textLabel = QLabel("Containing text:")
-        #directoryLabel = QLabel("In directory:")
-        #self.filesFoundLabel = QLabel()
-
-        #self.createFilesTable()
-
-
+        quitButton = self.createButton("&Exit", self.quit)
 
         mainLayout = QGridLayout()
-        #mainLayout.addWidget(fileLabel, 0, 0)
-        #mainLayout.addWidget(self.fileComboBox, 0, 1, 1, 2)
-        #mainLayout.addWidget(textLabel, 1, 0)
-        #mainLayout.addWidget(self.textComboBox, 1, 1, 1, 2)
-        #mainLayout.addWidget(directoryLabel, 2, 0)
-        #mainLayout.addWidget(self.directoryComboBox, 2, 1)
 
         mainLayout.addWidget(inputButton, 0, 0)
         mainLayout.addWidget(inputLabel, 0, 1)
         mainLayout.addWidget(self.inputPath, 0, 2)
         mainLayout.addWidget(self.inputStats, 1, 0)
-        mainLayout.addWidget(self.exampleImageDisplay, 1, 1)
+        mainLayout.addWidget(self.sampleImage, 1, 1)
 
         mainLayout.addWidget(outputButton, 2, 0)
         mainLayout.addWidget(outputLabel, 2, 1)
@@ -79,9 +50,6 @@ class Window(QDialog):
 
         mainLayout.addLayout(buttonsLayout, 3, 0)
 
-        #mainLayout.addWidget(self.filesTable, 3, 0, 1, 3)
-        #mainLayout.addWidget(self.filesFoundLabel, 4, 0)
-        #mainLayout.addLayout(buttonsLayout, 5, 0, 1, 3)
         self.setLayout(mainLayout)
 
         self.setWindowTitle("Find Files")
@@ -120,15 +88,13 @@ class Window(QDialog):
         for extension in countsPerExtension:
           stats.append(extension + ": " + str(countsPerExtension[extension]) + " files")
 
-        #load and display the first image
-        self.exampleImage = QImage()
-        if self.exampleImage.load(self.inputFiles[0]):
-          print "load success"
-          tmpPixmap = QPixmap(1)
-          tmpPixmap.convertFromImage(self.exampleImage.scaledToWidth(300))
-          self.exampleImageDisplay.setPixmap(tmpPixmap)
+        #TODO call make_average
 
+        #load and display the first image
+        self.sampleImage.setSampleImage(self.inputFiles[0])
+        #also display statistics
         self.inputStats.setText(",".join(stats))
+        #and show the input directory path to the user
         self.inputPath.setText(directory)
 
     def browseForOutput(self):
@@ -139,113 +105,108 @@ class Window(QDialog):
 
     def process(self):
 
-        QMessageBox.information(self, "Processing",
-          "Processing files in " + self.inputPath.text())
+      print "original h & w", self.sampleImage.originalHeight, self.sampleImage.originalWidth
+      print "scaled h & w", self.sampleImage.scaledHeight, self.sampleImage.scaledWidth
 
-        print "executing find-ball3.ws on ", '''
-        nip2 -bp find-ball3.ws
-          --set Workspaces.tab2.G1='Image_file "gertrud_closeup-avg.jpg"'
-          --set Workspaces.tab2.G17=2200
-          --set Workspaces.tab2.G18=1600
-          --set Workspaces.tab2.G19=500
-          --set Workspaces.tab2.G20=500
-          --set main=[Workspaces.tab2.F2,Workspaces.tab2.F5]
-          '''
+      scaleCoefficient = self.sampleImage.originalWidth / self.sampleImage.scaledWidth
+      ballBBTopLeftX = self.sampleImage.graphicsView.topLeft.x()*scaleCoefficient
+      ballBBTopLeftY = self.sampleImage.graphicsView.topLeft.y()*scaleCoefficient
+      ballBBWidth = self.sampleImage.graphicsView.rectangle.rect().width()*scaleCoefficient
+      ballBBHeight = self.sampleImage.graphicsView.rectangle.rect().height()*scaleCoefficient
 
-        QMessageBox.information(self, "Done",
-          "Output written to" + self.outputPath.text())
+      print ballBBTopLeftX, ballBBTopLeftY, ballBBWidth, ballBBHeight
 
-    #FIXME the following is leftovers from example code, can be useful,
-    #but currently not needed
-'''
-    @staticmethod
-    def updateComboBox(comboBox):
-        if comboBox.findText(comboBox.currentText()) == -1:
-            comboBox.addItem(comboBox.currentText())
+      QMessageBox.information(self, "Processing",
+        "Processing files in " + self.inputPath.text())
 
+      print "executing find-ball3.ws on ", '''
+      nip2 -bp find-ball3.ws
+        --set Workspaces.tab2.G1='Image_file "gertrud_closeup-avg.jpg"'
+        --set Workspaces.tab2.G17=2200
+        --set Workspaces.tab2.G18=1600
+        --set Workspaces.tab2.G19=500
+        --set Workspaces.tab2.G20=500
+        --set main=[Workspaces.tab2.F2,Workspaces.tab2.F5]
+        '''
 
+      QMessageBox.information(self, "Done",
+        "Output written to" + self.outputPath.text())
 
-    def findFiles(self, files, text):
-        progressDialog = QProgressDialog(self)
+    def quit(self):
+      self.close()
+      #FIXME quick and dirty
+      sys.exit(0)
 
-        progressDialog.setCancelButtonText("&Cancel")
-        progressDialog.setRange(0, files.count())
-        progressDialog.setWindowTitle("Find Files")
+#TODO an extension to QWidget that can:
+# * draw a QPixmap which represents a JPG image
+# * capture mouse press events and store their locations
+# * if two mouse press locations are stored, overlay a selection box
+#   using one coordinate as top left, other as bottom right
+# * further mouse presses adjust either the top left or bottom right coordinate
+#    whichever is closest
+# * OPTIONAL: 'zoom' button to only draw the selected part so the ball can be
+#   more closely approximated (also 'reset' button to restore original setting)
 
-        foundFiles = []
+class SampleGraphicsView(QGraphicsView):
 
-        for i in range(files.count()):
-            progressDialog.setValue(i)
-            progressDialog.setLabelText("Searching file number %d of %d..." % (i, files.count()))
-            QApplication.processEvents()
+  def __init__(self, parent=None):
+    super(SampleGraphicsView, self).__init__(parent)
 
-            if progressDialog.wasCanceled():
-                break
+    self.topLeft = QPoint(0, 0)
+    self.bottomRight = QPoint(10, 10)
+    self.rectangle = None
 
-            inFile = QFile(self.currentDir.absoluteFilePath(files[i]))
+  #TODO more userfriendly selection
 
-            if inFile.open(QIODevice.ReadOnly):
-                stream = QTextStream(inFile)
-                while not stream.atEnd():
-                    if progressDialog.wasCanceled():
-                        break
-                    line = stream.readLine()
-                    if text in line:
-                        foundFiles.append(files[i])
-                        break
+  def mousePressEvent(self, event):
+    #print "mouse press event!", event.x(), event.y()
 
-        progressDialog.close()
+    tmpPoint = QPoint(event.x(), event.y())
 
-        return foundFiles
+    dist1 = (self.topLeft-tmpPoint).manhattanLength()
+    dist2 = (self.bottomRight-tmpPoint).manhattanLength()
 
-    def showFiles(self, files):
-        for fn in files:
-            file = QFile(self.currentDir.absoluteFilePath(fn))
-            size = QFileInfo(file).size()
+    if dist1 < dist2:
 
-            fileNameItem = QTableWidgetItem(fn)
-            fileNameItem.setFlags(fileNameItem.flags() ^ Qt.ItemIsEditable)
-            sizeItem = QTableWidgetItem("%d KB" % (int((size + 1023) / 1024)))
-            sizeItem.setTextAlignment(Qt.AlignVCenter | Qt.AlignRight)
-            sizeItem.setFlags(sizeItem.flags() ^ Qt.ItemIsEditable)
+      self.topLeft = tmpPoint
+    else:
+      self.bottomRight = tmpPoint
 
-            row = self.filesTable.rowCount()
-            self.filesTable.insertRow(row)
-            self.filesTable.setItem(row, 0, fileNameItem)
-            self.filesTable.setItem(row, 1, sizeItem)
+    self.rectangle = self.redrawSelection()
 
-        self.filesFoundLabel.setText("%d file(s) found (Double click on a file to open it)" % len(files))
+  def redrawSelection(self):
+    if self.rectangle is not None:
+      self.scene().removeItem(self.rectangle)
+    return self.scene().addRect(QRectF(self.topLeft, self.bottomRight), QPen(QColor("red")))
 
+class SampleImageWidget(QWidget):
 
+  def __init__(self, parent=None):
 
-    def createComboBox(self, text=""):
-        comboBox = QComboBox()
-        comboBox.setEditable(True)
-        comboBox.addItem(text)
-        comboBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        return comboBox
+    super(SampleImageWidget, self).__init__(parent)
 
-    def createFilesTable(self):
-        self.filesTable = QTableWidget(0, 2)
-        self.filesTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+    self.graphicsScene = QGraphicsScene(self)
+    self.graphicsView = SampleGraphicsView(self.graphicsScene)
 
-        self.filesTable.setHorizontalHeaderLabels(("File Name", "Size"))
-        self.filesTable.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.filesTable.verticalHeader().hide()
-        self.filesTable.setShowGrid(False)
+  def setSampleImage(self, pathToFile):
 
-        self.filesTable.cellActivated.connect(self.openFileOfItem)
+    self.graphicsView.hide()
 
-    def openFileOfItem(self, row, column):
-        item = self.filesTable.item(row, 0)
+    #clear scene
+    self.graphicsScene.clear()
 
-        QMessageBox.information(self, "Success!",
-        "Hello \"%s\"!" % item.text())
+    #load file
+    tmpImage = QImage(pathToFile)
+    self.originalHeight = tmpImage.height()
+    self.originalWidth = tmpImage.width()
+    tmpPixmap = QPixmap(1)
+    tmpPixmap.convertFromImage(tmpImage.scaledToWidth(300))
+    self.scaledHeight = tmpPixmap.height()
+    self.scaledWidth = tmpPixmap.width()
 
-        QDesktopServices.openUrl(QUrl(self.currentDir.absoluteFilePath(item.text())))
-
-    #FIXME
-'''
+    #add to scene and show
+    self.graphicsScene.addPixmap(tmpPixmap)
+    self.graphicsView.show()
 
 if __name__ == '__main__':
 
