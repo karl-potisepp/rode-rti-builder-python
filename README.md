@@ -18,4 +18,5 @@ What doesn't:
 * running the RTI processing algorithm
 
 Rode Imaging Event: http://www.nigulistemuuseum.ee/en/niguliste-exhibitions/on-view/rode-imaging-event/
+
 Reflectance Transformation Imaging (RTI): http://culturalheritageimaging.org/Technologies/RTI/
