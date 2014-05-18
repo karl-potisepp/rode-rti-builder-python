@@ -2,6 +2,12 @@
 
 import os
 import sys
+import time
+
+#from make_average import *
+from find_ball import *
+
+from vipsCC import *
 
 from PyQt5.QtCore import (QDir, QIODevice, QFile, QFileInfo, Qt, QTextStream, QRect,
         QRectF, QUrl, QPoint)
@@ -10,7 +16,16 @@ from PyQt5.QtWidgets import (QWidget, QAbstractItemView, QApplication, QComboBox
         QDialog, QFileDialog, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
         QProgressDialog, QPushButton, QSizePolicy, QTableWidget, QGraphicsScene,
         QGraphicsView, QTableWidgetItem, QMessageBox)
+'''
+def make_average(output_filename, image_filenames):
+    images = [VImage.VImage(i) for i in image_filenames]
+    total = images[0]
+    for i in images:
+        total = total.add(i)
+    average = total.lin(1.0 / len(image_filenames), 0)
 
+    average.write(output_filename)
+'''
 class Window(QDialog):
 
     def __init__(self, parent=None):
@@ -75,23 +90,37 @@ class Window(QDialog):
               if "JPG" not in countsPerExtension:
                 countsPerExtension["JPG"] = 0
               countsPerExtension["JPG"] += 1
-              self.inputFiles.append(os.path.join(root, f))
+              self.inputFiles.append(os.path.join(root, f).encode('ascii','replace'))
             elif f.lower().endswith("tiff"):
               if "TIFF" not in countsPerExtension:
                 countsPerExtension["TIFF"] = 0
               countsPerExtension["TIFF"] += 1
-              self.inputFiles.append(os.path.join(root, f))
+              self.inputFiles.append(os.path.join(root, f).encode('ascii','replace'))
           #do not descend recursively
           break
+
+        if len(self.inputFiles)==0:
+          return
 
         stats = []
         for extension in countsPerExtension:
           stats.append(extension + ": " + str(countsPerExtension[extension]) + " files")
 
-        #TODO call make_average
+        #generate the average image from all the input files
+        self.average_filename = 'tmp_average.jpg'
+        print "generating average image", self.average_filename
+        print "python make_average.py " + self.average_filename + " " + ' '.join(self.inputFiles).encode('ascii', 'replace')
+        os.system("python make_average.py " + self.average_filename + " " + ' '.join(self.inputFiles).encode('ascii', 'replace'))
+        #make_average(self.average_filename, self.inputFiles)
+        counter = 60
+        while not os.path.exists(self.average_filename) and counter > 0:
+          counter -= 1
+          print ".",
+          time.sleep(1)
+        print "done"
 
-        #load and display the first image
-        self.sampleImage.setSampleImage(self.inputFiles[0])
+        #load and display the average image
+        self.sampleImage.setSampleImage(self.average_filename)
         #also display statistics
         self.inputStats.setText(",".join(stats))
         #and show the input directory path to the user
@@ -109,25 +138,25 @@ class Window(QDialog):
       print "scaled h & w", self.sampleImage.scaledHeight, self.sampleImage.scaledWidth
 
       scaleCoefficient = self.sampleImage.originalWidth / self.sampleImage.scaledWidth
+      scaleCoefficient2 = self.sampleImage.originalHeight / self.sampleImage.scaledHeight
+      scaleCoefficient = (scaleCoefficient + scaleCoefficient2) / 2
       ballBBTopLeftX = self.sampleImage.graphicsView.topLeft.x()*scaleCoefficient
       ballBBTopLeftY = self.sampleImage.graphicsView.topLeft.y()*scaleCoefficient
       ballBBWidth = self.sampleImage.graphicsView.rectangle.rect().width()*scaleCoefficient
       ballBBHeight = self.sampleImage.graphicsView.rectangle.rect().height()*scaleCoefficient
 
-      print ballBBTopLeftX, ballBBTopLeftY, ballBBWidth, ballBBHeight
+      print "locating the ball"
+      print "x:", int(ballBBTopLeftX), "y:", int(ballBBTopLeftY), "w:", int(ballBBWidth), "h:", int(ballBBHeight)
+      (position, radius) = search(self.average_filename,
+        int(ballBBTopLeftX),
+        int(ballBBTopLeftY),
+        int(ballBBWidth),
+        int(ballBBHeight))
+
+      print "ball position", position, " and radius", radius
 
       QMessageBox.information(self, "Processing",
         "Processing files in " + self.inputPath.text())
-
-      print "executing find-ball3.ws on ", '''
-      nip2 -bp find-ball3.ws
-        --set Workspaces.tab2.G1='Image_file "gertrud_closeup-avg.jpg"'
-        --set Workspaces.tab2.G17=2200
-        --set Workspaces.tab2.G18=1600
-        --set Workspaces.tab2.G19=500
-        --set Workspaces.tab2.G20=500
-        --set main=[Workspaces.tab2.F2,Workspaces.tab2.F5]
-        '''
 
       QMessageBox.information(self, "Done",
         "Output written to" + self.outputPath.text())
